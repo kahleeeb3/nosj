@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys # for standard error outputs
 import re # find recurring strings
 
@@ -84,7 +85,7 @@ def decodeSimpleString(sstring):
     return sstring
 
 def decodeSelector(dataType, value):
-    if dataType == 1: # if its a num
+    if dataType == 1: # if its a numchmod +x myscript.py
         value = decodeNum(value)
     if dataType == 2:
         value = decodeSimpleString(value)

@@ -1,0 +1,4 @@
+begin-map
+x -- string -- abcd
+y -- num -- 1.23
+end-map
