@@ -79,41 +79,65 @@ def decodeMap(map):
     is found to be invalid, exit with error 66.
     """
 
-    print('begin-map')
     map = map.strip() # ignore the white space at ends
 
     # find important places where characters exist
-    begin_map_points = [match.start()+1 for match in re.finditer(re.escape("<<"), map)] #  find index in map string where map begins
+    begin_map_points = [match.start() for match in re.finditer(re.escape("<<"), map)] #  find index in map string where map begins
     end_map_points = [match.start() for match in re.finditer(re.escape(">>"), map)] # find index in map string where map ends
     end_key_points = [match.start() for match in re.finditer(re.escape(":"), map)] # find index in map string where key value ends
     end_value_points = [match.start() for match in re.finditer(re.escape(","), map)] # find index in map string where assigned value for a key ends
 
-    # combine and sort the lists
-    event_index = sorted(begin_map_points + end_map_points + end_key_points + end_value_points) # ordered list of indexes where events occur
+    i = 0
+    print('begin-map')
+    while(i < len(map)):
+        
+        
+        # if we found an ':' char
+        if i in end_key_points:
+            
+            # 1. FIND THE KEY BY SCANNING LEFT
+            key = map[i-1] # store the key
 
-    # extract keys and decode values
-    maps_encountered = 0 # number of maps encountered
-    for key_end in end_key_points: # 1. for each ':' in the map string
-        event = event_index.index(key_end) # 2. find where that event occurred in the list of events 
-        curr_event = event_index[event] # 3. find the index of where the ':' is in the string
-        prev_event = event_index[event-1] # 4. find the index of the previous event
-        next_event = event_index[event+1] # 5. find the index of the next event
-        key = map[prev_event+1:curr_event] # 6. retrieve the key
-        value = map[curr_event+1:next_event] # 7. retrieve the value
+            # 2. FIND THE VALUE BY SCANNING RIGHT
+            j = i+1 # index of right scan
+            value = "" # set value to nothing
+            num_submaps = 0 # number of submaps found
+            while(j < len(map)): # while stuff left to scan
 
-        if value == '<': # 8. if the value is a map
-            map_end = end_map_points[maps_encountered] # 8.1 find where the map ends
-            maps_encountered+=1 # 8.2 increase the map count
-            value = map[curr_event+1:map_end+2] # 8.3 select the whole map as value
-            print(f'{key} -- map -- ') # print that map began
-            decodeSelector(3, value) # decode the map
-            # break # stop checking
+                # 2.1 IF A SUBMAP
+                if j in begin_map_points:
+                    num_submaps += 1 # increase num submaps
+                    while(num_submaps > 0): # while in submap
+                        value += map[j] # store the value
+                        j+=1 # step right
+                        if j in begin_map_points:
+                            num_submaps += 1
+                        if j in end_map_points:
+                            num_submaps -= 1
+                    value += map[j:j+2]
+                    j+=2 # move to end of submap
+                    
+                # 2.2 IF NOT A SUBMAP
+                else:
+                    if (j in end_value_points) or (j in end_map_points):
+                        break
+                    else:
+                        value += map[j]
+                        j += 1
 
-        dataType = verify(value) # 9. Identify the data type
-        value = decodeSelector(dataType, value) # 10. decode the value
-        dataTypeStrings = ['num', 'string', 'string', 'map']
-        print(f'{key} -- {dataTypeStrings[dataType]} -- {value}')
-
+            
+            # 3. DONE SEARCHING FOR VALUE
+            i = j # MOVE i to END OF SCAN POINT j
+            dataTypeStrings = ['num', 'string', 'string', 'map']
+            dataType = verify(value) # determine datatype of value
+            if dataType == 3:
+                print(f'{key} -- {dataTypeStrings[dataType]} -- ')
+                decodeMap(value)
+            else:
+                value = decodeSelector(dataType, value) # store the decoded value
+                print(f'{key} -- {dataTypeStrings[dataType]} -- {value}')
+        i+=1
+    
     print('end-map')
 
 def main():
