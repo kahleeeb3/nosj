@@ -17,6 +17,8 @@ def verify(input):
     If valid input, return 0 for num, 1 for simple-string, 2 for complex string, 3 for map.
     """
     # https://www.w3schools.com/python/python_regex.asp
+    # complex strings: https://rgxdb.com/r/48L3HPJP
+    # non-capturing group: (?:<some group>)? --> doesnt capture
 
     # Check for num
     pattern = "^f-?\d+\.\d+f$"
@@ -27,15 +29,16 @@ def verify(input):
     pattern = "^[a-zA-Z0-9 \t]+s$"
     if re.match(pattern, input):
         return 1
-    
-    # check for a complex string
-    if '%' in input:
-        return 2
 
     # check for map
-    pattern = "^ *<<[a-z]:.*>> *$"
+    pattern = "^ *<<(?:[a-z]:.*)?>> *$"
     if re.match(pattern, input):
         return 3
+    
+    # check for a complex string
+    pattern = "^(?:[^%]|%[0-9A-Fa-f]{2})+$"
+    if '%' in input and re.match(pattern, input):
+        return 2
 
     err("Not a valid nosj data type")
 
@@ -128,7 +131,9 @@ def main():
     contents = contents.replace('\n', '') # remove any new tab characters
 
     # decode
-    verify(contents)
+    # contents = sys.argv[1]
+    dataType = verify(contents)
+    if dataType != 3: err("input must be a map.")
     decodeMap(contents)
 
 if __name__=="__main__":
