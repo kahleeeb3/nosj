@@ -1,0 +1,8 @@
+How to Build:
+1. add `#!/usr/bin python` to 1st line of nosj.py
+    1.2. My install directory was `#!/usr/bin/python3`
+2. run `chmod +x nosj.py`
+3. execute the program with `./nosj.py <input file directory>`
+
+How to tarball:
+tar cf Assignment1.tar nosj

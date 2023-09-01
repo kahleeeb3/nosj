@@ -33,7 +33,10 @@ def verify(input):
     # check for map
     pattern = "^ *<<(?:[a-z]:.*)?>> *$"
     if re.match(pattern, input):
-        return 3
+        begin_map_points = [match.start() for match in re.finditer(re.escape("<<"), input)]
+        end_map_points = [match.start() for match in re.finditer(re.escape(">>"), input)]
+        if(len(begin_map_points) == len(end_map_points)): # if begin_map == end_map
+            return 3
     
     # check for a complex string
     pattern = "^(?:[^%]|%[0-9A-Fa-f]{2})+$"
