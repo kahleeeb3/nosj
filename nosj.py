@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
+
 import sys # for standard error outputs
 import re # find recurring strings
 
@@ -24,12 +25,12 @@ def verifyInput(marshalled):
     # Check for a map
     elif(marshalled.strip()[:2] == '<<' and marshalled.strip()[-2:] == '>>'):
         # If there is a space in the map, it should be invalid
-        if ' ' in marshalled.strip():
-            errMsg = "A properly formatted nosj map contains NO WHITESPACE characters"
-            print(f"ERROR -- {errMsg}", file=sys.stderr)
-            sys.exit(66)
-        else:
-            return 4 # this is a map
+        # if ' ' in marshalled.strip():
+        #     errMsg = "A properly formatted nosj map contains NO WHITESPACE characters"
+        #     print(f"ERROR -- {errMsg}", file=sys.stderr)
+        #     sys.exit(66)
+        # else:
+        return 4 # this is a map
         
     # not a valid format, send error
     else:
@@ -39,6 +40,7 @@ def verifyInput(marshalled):
 
 def decodeMap(map):
 
+    print('begin-map')
     map = map.strip() # ignore the white space
 
     # find important places where characters exist
@@ -67,18 +69,24 @@ def decodeMap(map):
             map_end = map_end_index[map_count] # 8.1 find where the map ends
             map_count+=1 # 8.2 increase the map count
             value = map[curr_event+1:map_end+2] # 8.3 select the whole map as value
+            print(f'{key} -- map -- ') # print that map began
+            decodeSelector(4, value) # decode the map
+            break
 
         dataType = verifyInput(value) # 9. Identify the data type
         value = decodeSelector(dataType, value) # 10. decode the value
+        dataTypeStrings = ['num', 'string', 'string', 'map']
+        print(f'{key} -- {dataTypeStrings[dataType-1]} -- {value}')
 
-        
-        map_dict[key] = value # 11. store the decoded value
-
-    return map_dict # 12. Return The dict
+    print('end-map')
 
 def decodeNum(num):
     num = num[1:-1] # remove the f at beginning and end
-    return float(num)
+    num = float(num)
+    if num.is_integer():
+        return int(num)
+    else:
+        return num
 
 def decodeSimpleString(sstring):
     sstring = sstring[:-1]
@@ -98,14 +106,19 @@ def main():
 
     # Check the input is of valid length
     if(len(sys.argv)!=2):
-        errMsg = "You must pass a single valid Marshalled nosj formatted argument"
+        errMsg = "You must pass a file name as an argument `./nosj.py <filename>`"
         print(f"ERROR -- {errMsg}", file=sys.stderr)
         sys.exit(66)
 
-    marshalled = sys.argv[1] # get the marshalled value from the input
-    dataType = verifyInput(marshalled) # verify the input is correct
-    unmarshalled = decodeSelector(dataType, marshalled) # decode the string
-    print(unmarshalled)
+    # read the provided file
+    filename = sys.argv[1] # get the filename from command arguments
+    with open(filename, 'r') as file: # open the file with read
+        contents = file.read() # store the file content
+    contents = contents.replace('\n', '')
+
+    # decode
+    dataType = verifyInput(contents) # verify the input is correct
+    decodeSelector(dataType, contents) # decode the string
 
 if __name__=="__main__":
     main()
