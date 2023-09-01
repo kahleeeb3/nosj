@@ -1,84 +1,43 @@
 #!/usr/bin/python3
 
 import sys # for standard error outputs
-import re # find recurring strings
+import re # find recurring strings, and regex
+import urllib.parse # parse percent encoded data
 
-def verifyInput(marshalled):
+def err(errMsg):
     """
-    Checks for valid marshmellow format of nosj input. If invalid input, 
-    changes the global value of 'errMsg' and returns -1. If valid input,
-    return 1 for num, 2 for simple-string, 3 for complex string, 4 for map.
+    Prints error code to screen and then exits with code 66
     """
+    print(f"ERROR -- {errMsg}", file=sys.stderr)
+    sys.exit(66)
+
+def verify(input):
+    """
+    Checks for valid format of nosj input. If invalid input, exit program with error 66. 
+    If valid input, return 0 for num, 1 for simple-string, 2 for complex string, 3 for map.
+    """
+    # https://www.w3schools.com/python/python_regex.asp
 
     # Check for num
-    if(marshalled[:1] == 'f' and marshalled[-1:] == 'f'):
-        return 1 # this is a num
+    pattern = "^f-?\d+\.\d+f$"
+    if re.match(pattern, input):
+        return 0
+
+    # check for simple string
+    pattern = "^[a-zA-Z0-9 \t]+s$"
+    if re.match(pattern, input):
+        return 1
     
-    # check for simple-string
-    elif(marshalled[-1:] == 's'):
+    # check for a complex string
+    if '%' in input:
         return 2
-    
-    # check for complex-string
-    elif('%' in marshalled):
+
+    # check for map
+    pattern = "^ *<<[a-z]:.*>> *$"
+    if re.match(pattern, input):
         return 3
-   
-    # Check for a map
-    elif(marshalled.strip()[:2] == '<<' and marshalled.strip()[-2:] == '>>'):
-        # If there is a space in the map, it should be invalid
-        # if ' ' in marshalled.strip():
-        #     errMsg = "A properly formatted nosj map contains NO WHITESPACE characters"
-        #     print(f"ERROR -- {errMsg}", file=sys.stderr)
-        #     sys.exit(66)
-        # else:
-        return 4 # this is a map
-        
-    # not a valid format, send error
-    else:
-        errMsg = "This is not a valid nosj input"
-        print(f"ERROR -- {errMsg}", file=sys.stderr)
-        sys.exit(66)
 
-def decodeMap(map):
-
-    print('begin-map')
-    map = map.strip() # ignore the white space
-
-    # find important places where characters exist
-    map_start_index = [match.start()+1 for match in re.finditer(re.escape("<<"), map)] # find map and submap start point
-    map_end_index = [match.start() for match in re.finditer(re.escape(">>"), map)] # find map and submap end points
-    key_end_index = [match.start() for match in re.finditer(re.escape(":"), map)] # find map and submap end points
-    value_end_index = [match.start() for match in re.finditer(re.escape(","), map)] # find map and submap end points
-    # print(map_start_index, map_end_index, key_end_index, value_end_index)
-
-    # combine and sort the lists
-    event_index = sorted(map_start_index + map_end_index + key_end_index + value_end_index)
-    # print(event_index)
-
-    # convert to a python dictionary
-    map_dict = {} # where to store the dictionary
-    map_count = 0 # number of maps encountered
-    for key_end in key_end_index: # 1. for each ':' in map string
-        event = event_index.index(key_end) # 2. find where that event occurred in the list of events 
-        curr_event = event_index[event] # 3. find the index of where the ':' is in the string
-        prev_event = event_index[event-1] # 4. find the index of the previous event
-        next_event = event_index[event+1] # 5. find the index of the next event
-        key = map[prev_event+1:curr_event] # 6. retrieve the key
-        value = map[curr_event+1:next_event] # 7. retrieve the value
-
-        if value == '<': # 8. if the value is a map
-            map_end = map_end_index[map_count] # 8.1 find where the map ends
-            map_count+=1 # 8.2 increase the map count
-            value = map[curr_event+1:map_end+2] # 8.3 select the whole map as value
-            print(f'{key} -- map -- ') # print that map began
-            decodeSelector(4, value) # decode the map
-            break
-
-        dataType = verifyInput(value) # 9. Identify the data type
-        value = decodeSelector(dataType, value) # 10. decode the value
-        dataTypeStrings = ['num', 'string', 'string', 'map']
-        print(f'{key} -- {dataTypeStrings[dataType-1]} -- {value}')
-
-    print('end-map')
+    err("Not a valid nosj data type")
 
 def decodeNum(num):
     num = num[1:-1] # remove the f at beginning and end
@@ -92,15 +51,67 @@ def decodeSimpleString(sstring):
     sstring = sstring[:-1]
     return sstring
 
+def decodeComplexString(cstring):
+    return urllib.parse.unquote(cstring)
+
 def decodeSelector(dataType, value):
-    if dataType == 1: # if its a numchmod +x myscript.py
+    """
+    Chooses which decoder to use given the datatype
+    """
+    if dataType == 0: # if its a numchmod +x myscript.py
         value = decodeNum(value)
-    if dataType == 2:
+    if dataType == 1:
         value = decodeSimpleString(value)
-    if dataType == 4: # if its a map
+    if dataType == 2:
+        value = decodeComplexString(value)
+    if dataType == 3: # if its a map
         value = decodeMap(value) # decode the map
 
     return value
+
+def decodeMap(map):
+    """
+    Decodes a map data type by finding instances where keys take place,
+    storing the key, and decoding the value based on its type. If the type
+    is found to be invalid, exit with error 66.
+    """
+
+    print('begin-map')
+    map = map.strip() # ignore the white space at ends
+
+    # find important places where characters exist
+    begin_map_points = [match.start()+1 for match in re.finditer(re.escape("<<"), map)] #  find index in map string where map begins
+    end_map_points = [match.start() for match in re.finditer(re.escape(">>"), map)] # find index in map string where map ends
+    end_key_points = [match.start() for match in re.finditer(re.escape(":"), map)] # find index in map string where key value ends
+    end_value_points = [match.start() for match in re.finditer(re.escape(","), map)] # find index in map string where assigned value for a key ends
+
+    # combine and sort the lists
+    event_index = sorted(begin_map_points + end_map_points + end_key_points + end_value_points) # ordered list of indexes where events occur
+
+    # extract keys and decode values
+    maps_encountered = 0 # number of maps encountered
+    for key_end in end_key_points: # 1. for each ':' in the map string
+        event = event_index.index(key_end) # 2. find where that event occurred in the list of events 
+        curr_event = event_index[event] # 3. find the index of where the ':' is in the string
+        prev_event = event_index[event-1] # 4. find the index of the previous event
+        next_event = event_index[event+1] # 5. find the index of the next event
+        key = map[prev_event+1:curr_event] # 6. retrieve the key
+        value = map[curr_event+1:next_event] # 7. retrieve the value
+
+        if value == '<': # 8. if the value is a map
+            map_end = end_map_points[maps_encountered] # 8.1 find where the map ends
+            maps_encountered+=1 # 8.2 increase the map count
+            value = map[curr_event+1:map_end+2] # 8.3 select the whole map as value
+            print(f'{key} -- map -- ') # print that map began
+            decodeSelector(3, value) # decode the map
+            break # stop checking
+
+        dataType = verify(value) # 9. Identify the data type
+        value = decodeSelector(dataType, value) # 10. decode the value
+        dataTypeStrings = ['num', 'string', 'string', 'map']
+        print(f'{key} -- {dataTypeStrings[dataType]} -- {value}')
+
+    print('end-map')
 
 def main():
 
@@ -114,11 +125,11 @@ def main():
     filename = sys.argv[1] # get the filename from command arguments
     with open(filename, 'r') as file: # open the file with read
         contents = file.read() # store the file content
-    contents = contents.replace('\n', '')
+    contents = contents.replace('\n', '') # remove any new tab characters
 
     # decode
-    dataType = verifyInput(contents) # verify the input is correct
-    decodeSelector(dataType, contents) # decode the string
+    verify(contents)
+    decodeMap(contents)
 
 if __name__=="__main__":
     main()
