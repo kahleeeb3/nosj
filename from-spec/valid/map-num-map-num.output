@@ -1,0 +1,8 @@
+begin-map
+x -- num -- 12.32
+y -- map -- 
+begin-map
+z -- num -- -5678
+end-map
+f -- num -- 12.32
+end-map

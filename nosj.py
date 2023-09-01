@@ -107,7 +107,7 @@ def decodeMap(map):
             value = map[curr_event+1:map_end+2] # 8.3 select the whole map as value
             print(f'{key} -- map -- ') # print that map began
             decodeSelector(3, value) # decode the map
-            break # stop checking
+            # break # stop checking
 
         dataType = verify(value) # 9. Identify the data type
         value = decodeSelector(dataType, value) # 10. decode the value
